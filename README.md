@@ -7,6 +7,8 @@
 This is a collection of different useful [flag.Value][flagValue]
 implementations. Works good with [flagutil][flagutil] library.
 
+> Under development right now.
+
 # Usage
 
 Here is a simple program that reads a date from the flag and prints it as a
