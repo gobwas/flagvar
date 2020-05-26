@@ -9,6 +9,8 @@ type TimeValue struct {
 	Layout string
 }
 
+var zeroTime time.Time
+
 func Time(p *time.Time, layout string) *TimeValue {
 	return &TimeValue{
 		P:      p,
@@ -26,5 +28,15 @@ func (t *TimeValue) Set(s string) error {
 }
 
 func (t *TimeValue) String() string {
+	if t.P == nil {
+		return zeroTime.Format(t.Layout)
+	}
 	return t.P.Format(t.Layout)
+}
+
+func (t *TimeValue) Get() interface{} {
+	if t.P == nil {
+		return nil
+	}
+	return *t.P
 }
