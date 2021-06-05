@@ -8,27 +8,40 @@ import (
 	"time"
 )
 
+// SetupOption is the interface to configure flags definitions.
 type SetupOption interface {
 	configureExporter(*exporter)
 }
 
 type exporter struct {
-	recursion bool
-	lispCase  bool
+	recursion    bool
+	lispCase     bool
+	setSeparator string
 }
 
+// WithLispCase specifies whether flag name should be in lisp-case form.
 type WithLispCase bool
 
 func (x WithLispCase) configureExporter(e *exporter) {
 	e.lispCase = bool(x)
 }
 
+// WithRecursion specifies whether flag definition should be recursive.
 type WithRecursion bool
 
 func (x WithRecursion) configureExporter(e *exporter) {
 	e.recursion = bool(x)
 }
 
+// WithSetSeparator specifies how nested flag sets should be separated.
+type WithSetSeparator string
+
+func (x WithSetSeparator) configureExporter(e *exporter) {
+	e.setSeparator = string(x)
+}
+
+// Struct iterates over given struct x fields and defines its fields as
+// appropriate flag variables.
 func Struct(flag *flag.FlagSet, x interface{}, opts ...SetupOption) error {
 	e := exporter{
 		lispCase: true,
@@ -46,6 +59,7 @@ func Struct(flag *flag.FlagSet, x interface{}, opts ...SetupOption) error {
 		return fmt.Errorf("can't setup non-struct value: %s", v.Type())
 	}
 	t := v.Type()
+
 	return e.setupStruct(flag, "", t, v)
 }
 
@@ -61,7 +75,7 @@ func (e exporter) setupStruct(flag *flag.FlagSet, parent string, t reflect.Type,
 			name = lispCase(name)
 		}
 		if parent != "" {
-			name = parent + "." + name
+			name = parent + e.setSeparator + name
 		}
 		if e.recursion && v.Kind() == reflect.Struct {
 			err := e.setupStruct(flag, name, v.Type(), v)
@@ -162,6 +176,9 @@ func (v durationValue) String() string {
 	}
 	return v.x.Interface().(time.Duration).String()
 }
+func (v durationValue) Get() interface{} {
+	return v.x.Interface()
+}
 
 type floatValue struct {
 	x    reflect.Value
@@ -176,12 +193,21 @@ func (v floatValue) Set(s string) error {
 	v.x.SetFloat(x)
 	return nil
 }
-
 func (v floatValue) String() string {
 	if !v.x.IsValid() {
 		return "<zero>"
 	}
 	return strconv.FormatFloat(v.x.Float(), 'f', -1, v.bits)
+}
+func (v floatValue) Get() interface{} {
+	f := v.x.Float()
+	switch v.x.Kind() {
+	case reflect.Float32:
+		return float32(f)
+	case reflect.Float64:
+		return float64(f)
+	}
+	panic(fmt.Sprintf("unexpected kind: %s", v.x.Kind()))
 }
 
 type stringValue struct {
@@ -192,12 +218,14 @@ func (v stringValue) Set(s string) error {
 	v.x.Set(reflect.ValueOf(s))
 	return nil
 }
-
 func (v stringValue) String() string {
 	if !v.x.IsValid() {
 		return "<zero>"
 	}
 	return v.x.String()
+}
+func (v stringValue) Get() interface{} {
+	return v.x.Interface()
 }
 
 type boolValue struct {
@@ -212,12 +240,14 @@ func (v boolValue) Set(s string) error {
 	v.x.Set(reflect.ValueOf(x))
 	return nil
 }
-
 func (v boolValue) String() string {
 	if !v.x.IsValid() {
 		return "<zero>"
 	}
 	return strconv.FormatBool(v.x.Bool())
+}
+func (v boolValue) Get() interface{} {
+	return v.x.Interface()
 }
 
 type intValue struct {
@@ -234,12 +264,14 @@ func (v intValue) Set(s string) error {
 	v.x.SetInt(x)
 	return nil
 }
-
 func (v intValue) String() string {
 	if !v.x.IsValid() {
 		return "<zero>"
 	}
 	return strconv.FormatInt(v.x.Int(), v.base)
+}
+func (v intValue) Get() interface{} {
+	return v.x.Interface()
 }
 
 type uintValue struct {
@@ -256,10 +288,12 @@ func (v uintValue) Set(s string) error {
 	v.x.SetUint(x)
 	return nil
 }
-
 func (v uintValue) String() string {
 	if !v.x.IsValid() {
 		return "<zero>"
 	}
 	return strconv.FormatUint(v.x.Uint(), v.base)
+}
+func (v uintValue) Get() interface{} {
+	return v.x.Interface()
 }
