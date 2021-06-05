@@ -28,12 +28,8 @@ func main() {
 	flags := flag.NewFlagSet("time", flag.ExitOnError)	
 	
 	var t time.Time
-	flags.Var(
-		&flagvar.TimeValue{
-			P:      &t,
-			Layout: "02.01.2006",
-		},
-		"date", "01.01.1970",
+	flags.Var(&flagvar.Time(&t, "02.01.2006"),
+		"date", 
 		"time to print as a unix timestamp in form `dd.mm.yyyy`",
 	)
 	
